@@ -8,13 +8,29 @@
 
 package com.example.samplestickerapp;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.Button;
+import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
+import androidx.documentfile.provider.DocumentFile;
+import androidx.media3.common.util.UnstableApi;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,8 +45,11 @@ public class StickerPackListActivity extends AddStickerPackActivity {
     private StickerPackListAdapter allStickerPacksListAdapter;
     private WhiteListCheckAsyncTask whiteListCheckAsyncTask;
     private ArrayList<StickerPack> stickerPackList;
+    private static final String TAG = "AddStickerPackActivity";
+    private ActivityResultLauncher<Uri> folderPickerLauncher;
 
-    @Override
+
+    @OptIn(markerClass = UnstableApi.class) @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sticker_pack_list);
@@ -40,7 +59,37 @@ public class StickerPackListActivity extends AddStickerPackActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(getResources().getQuantityString(R.plurals.title_activity_sticker_packs_list, stickerPackList.size()));
         }
+        // vamos a solicitar permiso para leer archivos
+        folderPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocumentTree(),
+                uri -> {
+                    if (uri != null) {
+                        // El usuario ha seleccionado una carpeta.
+                        androidx.media3.common.util.Log.d(TAG, "Carpeta seleccionada por el usuario: " + uri.toString());
 
+                        // Tomar permisos persistentes para mantener el acceso después de que la app se reinicie.
+                        final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                            getContentResolver().takePersistableUriPermission(uri, takeFlags);
+                        }
+
+                        // Guardar el URI de la carpeta en SharedPreferences para uso futuro.
+                        saveFolferUri(uri);
+
+                        // Ahora que tenemos el permiso, podemos leer los archivos.
+                        // Llama aquí a la función que procesa los stickers.
+                        androidx.media3.common.util.Log.d(TAG, "Procediendo a leer archivos de la carpeta seleccionada.");
+                        loadFilesFromFolder(uri);
+
+                    } else {
+                        // El usuario canceló la selección.
+                        androidx.media3.common.util.Log.w(TAG, "El usuario no seleccionó ninguna carpeta.");
+                        Toast.makeText(this, "No se seleccionó una carpeta.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+        Button selectFolderButton = findViewById(R.id.id_del_boton_para_seleccionar_carpeta);
+        selectFolderButton.setOnClickListener(v -> openFolderPicker());
     }
 
     @Override
@@ -55,6 +104,63 @@ public class StickerPackListActivity extends AddStickerPackActivity {
         super.onPause();
         if (whiteListCheckAsyncTask != null && !whiteListCheckAsyncTask.isCancelled()) {
             whiteListCheckAsyncTask.cancel(true);
+        }
+    }
+
+    protected void openFolderPicker() {
+        Log.d(TAG, "openFolderPicker");
+        folderPickerLauncher.launch(null);
+    }
+
+    /**
+     * Guardar el URI de la carpeta en SharedPreferences
+     * @param uri El uri de la carpeta a guardar
+     */
+    void saveFolferUri(Uri uri) {
+        SharedPreferences prefs = getSharedPreferences("app_prefs", MODE_PRIVATE);
+        prefs.edit().putString("folder_uri", uri.toString()).apply();
+    }
+
+    /**
+     * Recupera el URI de la carpeta guardada desde SharedPreferences.
+     * @return El URI guardado, o null si no existe.
+     */
+    @Nullable
+    protected Uri getSavedFolderUri() {
+        SharedPreferences prefs = getSharedPreferences("app_prefs", MODE_PRIVATE);
+        String uriString = prefs.getString("folder_uri", null);
+        return uriString != null ? Uri.parse(uriString) : null;
+    }
+
+    /**
+     * Lee y procesa los archivos dentro de la carpeta seleccionada
+     * @param folderUri El URI de la carpeta seleccionada
+     */
+    void loadFilesFromFolder(Uri folderUri) {
+        // Object file que representa el directorio
+        DocumentFile directory = DocumentFile.fromTreeUri(this, folderUri);
+        if (directory == null || !directory.exists() || !directory.isDirectory()) {
+            Log.e(TAG, "Invalid folder URI: " + folderUri);
+            return;
+        }
+
+        for (DocumentFile file : directory.listFiles()) {
+            if (file.isFile()) {
+                // Procesar el archivo
+                Log.d(TAG, "Procesando archivo: " + file.getName());
+
+                try {
+                    new StickerContentProvider().openAssetFile(file.getUri(), "r");
+                    InputStream inputStream = getContentResolver().openInputStream(file.getUri());
+                    // Aquí puedes, por ejemplo, decodificar una imagen:
+                    Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error al procesar archivo: " + file.getName(), e);
+                }
+            } else if (file.isDirectory()) {
+                // También puedes manejar subcarpetas si es necesario
+                Log.d(TAG, "Subdirectorio encontrado: " + file.getName());
+            }
         }
     }
 

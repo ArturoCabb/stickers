@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context=".StickerPackListActivity"
     tools:showIn="@layout/activity_sticker_pack_list">
+
+    <Button
+        android:id="@+id/id_del_boton_para_seleccionar_carpeta"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:layout_gravity="top"
+        android:padding="8dp"
+        android:text="Buscar archivos"
+        android:textColor="@android:color/holo_red_dark"/>
 
     <TextView
         android:id="@+id/error_message"
@@ -19,4 +29,4 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-</FrameLayout>
+</LinearLayout>
