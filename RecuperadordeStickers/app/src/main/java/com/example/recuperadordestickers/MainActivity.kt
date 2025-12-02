@@ -18,13 +18,14 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.recuperadordestickers.models.Sticker
+import com.example.recuperadordestickers.models.StickerPack
 
 class MainActivity : AppCompatActivity() {
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
     private val PREFS_NAME = "StickerAppPrefs"
     private val KEY_FOLDER_URI = "folder_uri"
     private lateinit var stickerAdapter: StickerAdapter
-    private val stickers = mutableListOf<Sticker>()
+    private val stickerPackList = mutableListOf<StickerPack>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +39,7 @@ class MainActivity : AppCompatActivity() {
 
         val recyclerView = findViewById<RecyclerView>(R.id.listaStickers)
         recyclerView.layoutManager = GridLayoutManager(this, 4)
-        stickerAdapter = StickerAdapter(stickers)
+        stickerAdapter = StickerAdapter(stickerPackList)
         recyclerView.adapter = stickerAdapter
 
         folderPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -70,10 +71,16 @@ class MainActivity : AppCompatActivity() {
     private fun loadStickersFromUri(folderUri: Uri) {
         val folder = DocumentFile.fromTreeUri(this, folderUri)
         if (folder != null && folder.isDirectory) {
-            stickers.clear()
+            stickerPackList.clear()
+            val stickerList = mutableListOf<Sticker>()
             for (file in folder.listFiles()) {
-                if (file.isFile && file.name?.endsWith(".webp") == true) {
-                    stickers.add(Sticker(file.uri))
+                if (stickerList.size <= 30) {
+                    if (file.isFile && file.name?.endsWith(".webp") == true) {
+                        stickerList.add(Sticker(file.uri))
+                    }
+                } else {
+                    stickerPackList.add(StickerPack(stickers = stickerList))
+                    stickerList.clear()
                 }
             }
             stickerAdapter.notifyDataSetChanged()

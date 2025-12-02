@@ -7,8 +7,9 @@ import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.recuperadordestickers.models.Sticker
+import com.example.recuperadordestickers.models.StickerPack
 
-class StickerAdapter(private val stickers: List<Sticker>) : RecyclerView.Adapter<StickerAdapter.StickerViewHolder>() {
+class StickerAdapter(private val stickerPacks: List<StickerPack>) : RecyclerView.Adapter<StickerAdapter.StickerViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StickerViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.sticker_item, parent, false)
@@ -16,13 +17,13 @@ class StickerAdapter(private val stickers: List<Sticker>) : RecyclerView.Adapter
     }
 
     override fun onBindViewHolder(holder: StickerViewHolder, position: Int) {
-        val sticker = stickers[position]
+        val sticker = stickerPacks[position].stickers[0]
         Glide.with(holder.itemView.context)
             .load(sticker.uri)
             .into(holder.stickerImageView)
     }
 
-    override fun getItemCount(): Int = stickers.size
+    override fun getItemCount(): Int = stickerPacks.size
 
     class StickerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val stickerImageView: ImageView = itemView.findViewById(R.id.stickerImageView)
